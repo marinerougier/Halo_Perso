@@ -1,0 +1,1153 @@
+<!-- 
+DESCRIPTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-->
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>exp</title>
+  <script src="jsPsych-6.1.0/jspsych.js"></script>
+  <script src="jsPsych-6.1.0/plugins/jspsych-fullscreen.js"></script>
+  <script src="jsPsych-6.1.0/plugins/jspsych-html-keyboard-response.js"></script>
+  <script src="jsPsych-6.1.0/plugins/jspsych-html-button-response.js"></script>
+  <script src="jsPsych-6.1.0/plugins/jspsych-survey-text.js"></script>
+  <script src="jsPsych-6.1.0/plugins/jspsych-survey-likert.js"></script>
+  <script src="jsPsych-6.1.0/plugins/jspsych-survey-multi-choice.js"></script>
+  <script src="jsPsych-6.1.0/plugins/jspsych-external-html.js"></script>
+  <script src="js/jspsych-html-slider-response_required.js"></script>
+  <script src="js/jquery.min.js"></script>
+  <script src="js/lodash.min.js"></script>
+  <script src="js/firebase.js"></script>
+  <link href="jsPsych-6.1.0/css/jspsych.css" rel="stylesheet" type="text/css">
+  <style>
+  body {
+    cursor: default;
+  }
+  #jspsych-html-slider-response-next {
+    margin: 0px;
+  }
+  .imgJudge {
+  	position: fixed;
+    width: 70%;
+    margin: 0px;
+    padding: 0px;
+    top: 0px;
+    left:15%;
+    z-index: 2;
+  }
+  .jspsych-content-wrapper {
+    width: 70%; 
+    height: 10000px;
+  }
+</style>
+</head>
+<body></body>
+<script>
+
+  /* Parameters */
+  var githubCIs = 'Stim_selected/'; // github CIs path
+
+  /* Initial variables */
+  var timeline = [];
+  var preloadimages = [];
+  var prolificID = jsPsych.data.getURLVariable("PROLIFIC_PID");
+
+  // female stimuli
+  var Stim_highAtt_fem = [
+  "Stim_selected/female_faces/Fem_Att_1_high_blanc.jpg", 
+  "Stim_selected/female_faces/Fem_Att_2_high_blanc.jpg"
+  ];
+  
+  var Stim_medAtt_fem = [
+  "Stim_selected/female_faces/Fem_Att_1_med_blanc.jpg", 
+  "Stim_selected/female_faces/Fem_Att_2_med_blanc.jpg"
+  ];
+
+  var Stim_lowAtt_fem = [
+  "Stim_selected/female_faces/Fem_Att_1_low_blanc.jpg", 
+  "Stim_selected/female_faces/Fem_Att_2_low_blanc.jpg"
+  ];
+
+  // male stimuli
+  var Stim_highAtt_male = [
+  "Stim_selected/male_faces/Male_Att_1_high_blanc.jpg", 
+  "Stim_selected/male_faces/Male_Att_2_high_blanc.jpg"
+  ];
+  
+  var Stim_medAtt_male = [
+  "Stim_selected/male_faces/Male_Att_1_med_blanc.jpg", 
+  "Stim_selected/male_faces/Male_Att_2_med_blanc.jpg"
+  ];
+
+  var Stim_lowAtt_male = [
+  "Stim_selected/male_faces/Male_Att_1_low_blanc.jpg", 
+  "Stim_selected/male_faces/Male_Att_2_low_blanc.jpg"
+  ];
+
+  // Randomly picking female faces and creating a list
+  stim_high_fem = _.sampleSize(Stim_highAtt_fem, 1);
+  stim_med_fem = _.sampleSize(Stim_medAtt_fem, 1);
+  stim_low_fem = _.sampleSize(Stim_lowAtt_fem, 1);
+
+  var FaceStims_fem = _.flattenDeep([stim_high_fem, stim_med_fem, stim_low_fem]);
+  preloadimages.push(FaceStims_fem);
+
+  FaceStims_fem = FaceStims_fem.map(function(e) {return {imgHtml: "<img class='imgJudge' src='" + e + "'>"}});
+  FaceStims_fem = _.shuffle(FaceStims_fem); // randomize order
+
+  // Randomly picking male faces and creating a list
+  stim_high_male = _.sampleSize(Stim_highAtt_male, 1);
+  stim_med_male = _.sampleSize(Stim_medAtt_male, 1);
+  stim_low_male = _.sampleSize(Stim_lowAtt_male, 1);
+
+  var FaceStims_male = _.flattenDeep([stim_high_male, stim_med_male, stim_low_male]);
+  preloadimages.push(FaceStims_male);
+
+  FaceStims_male = FaceStims_male.map(function(e) {return {imgHtml: "<img class='imgJudge' src='" + e + "'>"}});
+  FaceStims_male = _.shuffle(FaceStims_male); // randomize order
+
+  // randomly assigning either the female or the male list 
+  var FaceStims = jsPsych.randomization.sampleWithoutReplacement([FaceStims_fem, FaceStims_male], 1)[0];
+
+  // EXPERIMENT --------------------------------------------------------------------------------------------------------
+
+  /* FULL SCREEN MODE */
+  var activeFullscreen = {
+    message: "",
+    button_label: "To start the study, please switch to fullscreen",
+    type: 'fullscreen',
+    fullscreen_mode: true,
+    delay_after: 200,
+  };
+
+// Consent
+var check_consent = function(elem) {
+  if (document.getElementById('info').checked 
+    & document.getElementById('volunt').checked 
+    & document.getElementById('anony').checked 
+    & document.getElementById('end').checked 
+    & document.getElementById('consqc').checked 
+    & document.getElementById('summ').checked 
+    & document.getElementById('participate').checked ) {
+    return true;
+  }
+  else {
+    alert("If you wish to participate, you must check all the boxes.");
+    return false;
+  }
+  return false;
+};
+
+
+var consent = {
+  type:'external-html',
+  url: "https://marinerougier.github.io/Ugent_1/external_page_consent.html",
+  cont_btn: "start",
+  check_fn: check_consent
+};
+
+  /* General INSTRUCTIONS */
+
+  var Quit_expe = {
+    type: "html-keyboard-response",
+    post_trial_gap: 300,
+    choices: [32],
+    stimulus: function() {
+      var html = "";
+      html += "<p class='justify'>You can quit the study at any time by closing the browser window. However, please be aware ";
+      html += "that this will <b>end your participation</b>. If you are certain that you want to quit or encounter technical issues ";
+      html += "that force you to quit, <b>you can still receive a partial reward proportionate to the time you actually spent</b> on ";
+      html += "the study. If this occurs, please take the following steps: Return the study via the Prolific study page as ";
+      html += "quickly as possible (please do not submit unless you have completed the study and received a completion code). ";
+      html += "Send a message to the researcher via the Prolific study page, stating that you completed part of the study ";
+      html += "(this will ensure that the researcher knows you should receive a partial reward). </br></br> ";
+      html += "<p></br>Press <span class='light-keys'><kbd>space</kbd></span> to continue</p>";
+      return html;
+    },
+  };
+  var Instr_gene0 = {
+    type: "html-keyboard-response",
+    post_trial_gap: 300,
+    choices: [32],
+    stimulus: function() {
+      var html = "";
+      html += "<h1>Study of accuracy in person perception</h1>";
+      html += "<p class='justify'>Psychological studies have shown that <b>people do form detailed impressions of others "
+      html += "on the basis of a very few cues</b>. However, what determines the extent to which these impressions are generally ";
+      html += "accurate have not yet been completely identified. </br> </br> ";
+      html += "The purpose of the present study is to <b>compare your person perception accuracy (that is, the accuracy of an untrained ";
+      html += "person) with two other groups who had been trained in various interpersonal perception techniques</b>. These "
+      html += "groups are constituted of students in clinical psychology and professional clinical psychologists. </br></br>";
+      html += "Note that accuracy in person perception is a general ability varying among people. <b>Some individuals without training ";
+      html += "may be as accurate as some professional clinicians when making first-impression judgments based on noninterview material</b>. </br></br> ";
+      html += "<p></br>Press <span class='light-keys'><kbd>space</kbd></span> to continue</p>";
+      return html;
+    },
+  };
+
+  var Instr_gene1 = {
+    type: "html-keyboard-response",
+    post_trial_gap: 300,
+    choices: [32],
+    stimulus: function() {
+      var html = "";
+      html += "<h1>Study of accuracy in person perception</h1>";
+      html += "<p class='justify'>This study is divided into <b>two parts</b>: </br></br> - In Part 1, we will assess your person perception accuracy. </br>- In Part 2, we will ask a series of questions about yourself.</br> </br> ";
+      html += "<p></br>Press <span class='light-keys'><kbd>space</kbd></span> to continue</p>";
+      return html;
+    },
+  };
+
+  var Instr_gene2 = {
+    type: "html-keyboard-response",
+    post_trial_gap: 300,
+    choices: [32],
+    stimulus: function() {
+      var html = "";
+      html += "<h1>Study of accuracy in person perception: Part 1</h1>";
+      html += "<p class='justify'>Standard sets of photographs will be used as the basis for personality inferences. "
+      html += "The individuals depicted in the photographs are part of a group of <b>college students who are currently enrolled ";
+      html += "in a longitudinal study of personality development scheduled to continue ";
+      html += "into adulthood.</b><br><br> Therefore, it will be possible to <b>assess the accuracy of your judgments </b>against information ";
+      html += "currently available on the persons as well as the forthcoming information. </br></br>"
+      html += "<p></br>Press <span class='light-keys'><kbd>space</kbd></span> to continue</p>";
+      return html;
+    },
+  };
+
+  /* PREVIEW CIS */
+  var previewstim = {
+    timeline_variables: FaceStims,
+    choices: jsPsych.NO_KEYS,
+    trial_duration: 800,
+    post_trial_gap: 100,
+    timeline: [{
+      type: 'html-keyboard-response',
+      stimulus: function() {return jsPsych.timelineVariable('imgHtml', true)},
+    }]
+  };
+
+  /* JUDGMENTS INSTRUCTIONS */
+  var jugmentInst_stim = {
+    type: "html-keyboard-response",
+    post_trial_gap: 300,
+    choices: [32],
+    stimulus: function() {
+      var html = "";
+      html += "<h1>Study of accuracy in person perception: Part 1</h1>";
+      html += "<p class='justify'>Your specific task is to <b>report several judgments on 3 persons.</b> ";
+      html += "<p class='justify'>To do so, you will evaluate each person on <b>42 personality traits or personality outcomes. </b><br><br>";
+      html += "<b>Given that this study is on person perception, we are not interested in your tact, politeness, or other ";
+      html += "factors that are usually important in everyday life situations. </br>";
+      html += "It is extremely important that you try to answer <b> as honestly and as spontaneously as possible.</b></br></br>";
+      html += "<p></br>Press <span class='light-keys'><kbd>space</kbd></span> to begin</p>";
+      return html;
+    },
+  };
+
+  /* Attractiveness INSTRUCTIONS */
+  var attractiveness_instr = {
+    type: "html-keyboard-response",
+    post_trial_gap: 300,
+    choices: [32],
+    stimulus: function() {
+      var html = "";
+      html += "<h1>Study of accuracy in person perception: Part 1</h1>";
+      html += "<p class='justify'>Now, we will ask you to rate the three faces that you saw on their <b>physical attractiveness</b>.<br><br> ";
+      html += "<b>Again, remember that we are not interested in your tact, politeness, or other ";
+      html += "factors that are usually important in everyday life situations. </br>";
+      html += "It is extremely important that you try to answer <b> as honestly and as spontaneously as possible.</b></br></br>";
+      html += "<p></br>Press <span class='light-keys'><kbd>space</kbd></span> to begin</p>";
+      return html;
+    },
+      on_load: function() {
+          window.scrollTo(0, 0);
+          $(".jspsych-content").css("margin-top", "200px");
+          $(".jspsych-content").css("max-width", "90%");
+        },
+  };
+
+  // Judgments on various dimensions
+
+  // Social Desirability index (from Dion et al. 1972): 
+  //The index consists of the following items: poised/awkward, modest/vain, strong/weak, interesting/boring, 
+  //self-assertive/submissive, sociable/unsociable, independent/dependent, warm/cold, genuine/artificial, kind/cruel, 
+  //exciting/dull, sexually warm/sexually cold, sincere/insincere, and sensitive/insensitive. 
+  //Item modest/vain: found to correlate negatively with the rest of the Index (Dermer & Thiei, 1975).
+
+  // Traits from the meta-analysis of Eagly et al. (1991):
+
+  //social competence:
+  //traits
+  var scaleSociable = ["0</br>Not sociable at all", "1", "2", "3", "4", "5</br>Totally sociable"];
+  var scaleFunLoving = ["0</br>Not fun loving at all", "1","2", "3", "4", "5</br>Totally fun loving"];
+  // outcomes
+  var scaleLikable = ["0</br>Not likable at all", "1", "2", "3", "4", "5</br>Totally likable"];
+  var scalePopular = ["0</br>Not popular at all", "1", "2", "3", "4", "5</br>Totally popular"];
+
+  // intellectual competence:
+  //intellectual ability
+  var scaleIntelligent = ["0</br>Not intelligent at all", "1", "2", "3", "4", "5</br>Totally intelligent"];
+  var scaleSkillful = ["0</br>Not skillful at all", "1", "2", "3", "4", "5</br>Totally skillful"];
+  //rational mental style
+  var scaleRational = ["0</br>Not rational at all", "1", "2", "3", "4", "5</br>Totally rational"];
+  var scaleScientific = ["0</br>Not scientific at all", "1", "2", "3", "4", "5</br>Totally scientific"];
+  //high task motivation
+  var scaleAmbitious = ["0</br>Not ambitious at all", "1", "2", "3", "4", "5</br>Totally ambitious"];
+  var scaleHardWorking = ["0</br>Not hard-working at all", "1", "2", "3", "4", "5</br>Totally hard-working"];
+  //successful outcomes of task endeavors
+  var scaleGrade = ["0</br>Unlikely to receive good grades", "1", "2", "3", "4", "5</br>Likely to receive good grades"];
+  var scaleSuccess = ["0</br>Unlikely to achieve career success", "1", "2", "3", "4", "5</br>Likely to achieve career success"];
+
+  // concerns for others
+  // social sensitivity
+  var scaleSensitive = ["0</br>Not sensitive at all", "1", "2", "3", "4", "5</br>Totally sensitive"];
+  var scaleEmpathic = ["0</br>Not empathic at all", "1", "2", "3", "4", "5</br>Totally empathic"];
+  //nurturance
+  var scaleCompassionate = ["0</br>Not compassionate at all", "1", "2", "3", "4","5</br>Totally compassionate"];
+  var scaleGenerous = ["0</br>Not generous at all", "1", "2", "3", "4", "5</br>Totally generous"];
+  //lack of egotism
+  var scaleModest = ["0</br>Not modest at all", "1", "2", "3", "4", "5</br>Totally modest"];
+  var scaleEgoistic = ["0</br>Not egoistic at all", "1", "2", "3", "4", "5</br>Totally egoistic"];
+
+  // Integrity
+  // honesty
+  var scaleTrustworthy = ["0</br>Not trustworthy at all", "1", "2", "3", "4", "5</br>Totally trustworthy"];
+  var scaleHonest = ["0</br>Not honest at all", "1", "2", "3", "4", "5</br>Totally honest"];
+  // respect for norms
+  var scaleFaithful  = ["0</br>Unlikely to be faithful to the spouse", "1", "2", "3", "4", "5</br>Likely to be faithful to the spouse"];
+
+  // Adjustment
+  // good mental health
+  var scaleNormal = ["0</br>Not normal at all", "1", "2", "3", "4", "5</br>Totally normal"];
+  var scaleWellAdjusted = ["0</br>Not well-adjusted at all", "1", "2", "3", "4", "5</br>Totally well-adjusted"];
+  //happiness
+  var scaleSatisfied  = ["0</br>Not satisfied at all", "1", "2", "3", "4", "5</br>Totally satisfied"];
+  var scaleHappy  = ["0</br>Not happy at all", "1", "2", "3", "4", "5</br>Totally happy"];
+  // self-esteem
+  var scaleConfident  = ["0</br>Not confident at all", "1", "2", "3", "4", "5</br>Totally confident"];
+  var scaleSelfRegard  = ["0</br>Unlikely to have a positive self-regard", "1", "2", "3", "4", "5</br>Likely to have a positive self-regard"];
+  //well-being
+  var scaleMature  = ["0</br>Not mature at all", "1", "2", "3", "4", "5</br>Totally mature"];
+  var scaleHealthy  = ["0</br>Not healthy at all", "1", "2", "3", "4", "5</br>Totally healthy"];
+
+  // Potency
+  //power
+  var scaleStrong = ["0</br>Not strong at all", "1", "2", "3", "4", "5</br>Totally strong"];
+  var scaleSelfAssertive = ["0</br>Not self-assertive at all", "1", "2", "3", "4", "5</br>Totally self-assertive"];
+  // dominance
+  var scaleDominant  = ["0</br>Not dominant at all", "1", "2", "3", "4", "5</br>Totally dominant"];
+  var scaleLeader  = ["0</br>Unlikely to act as a leader", "1", "2", "3", "4", "5</br>Likely to act as a leader"];
+
+  // Vanity
+  var scaleVain = ["0</br>Not vain at all", "1", "2", "3", "4", "5</br>Totally vain"];
+  
+  // Traits from Bassili (1981) that correspond to the 8 which seemed to fit the vain, materialistic and sexually permissive orientation discussed by Dermer and Thiel:
+  // elitist/egalitarian, snobbish/approachable, shallow/deep, conceited/humble, materialistic/spiritual, 
+  // pompous/meek, promiscuous/prudish and boastfull /modest.
+  // To keep the same format not at all/totally, we select only one of the two labels
+
+  // Vain, materialistic and sexually permissive orientation :
+  var scaleElitist = ["0</br>Not elitist at all", "1", "2", "3", "4", "5</br>Totally elitist"];
+  var scaleSnobbish = ["0</br>Not snobbish at all", "1", "2", "3", "4", "5</br>Totally snobbish"];
+  var scaleShallow = ["0</br>Not shallow at all", "1", "2", "3", "4", "5</br>Totally shallow"];
+  var scaleHumble = ["0</br>Not humble", "1", "2", "3", "4", "5</br>Totally humble"];
+  var scaleMaterialistic = ["0</br>Not materialistic at all", "1", "2", "3", "4", "5</br>Totally materialistic"];
+  var scalePompous = ["0</br>Not pompous at all", "1", "2", "3", "4", "5</br>Totally pompous"];
+  var scalePrudish = ["0</br>Not prudish at all", "1", "2", "3", "4", "5</br>Totally prudish"];
+  var scaleBoastfull = ["0</br>Not boastfull at all", "1", "2", "3", "4", "5</br>Totally boastfull"];
+
+  var judgments_dimensions = [];
+  FaceStims.map(function(ciImg){
+    var likert_trial = {
+        type: 'survey-likert',
+        preamble: ciImg.imgHtml,
+        questions: [
+          {prompt: "", labels: scaleSociable, required: true},
+          {prompt: "", labels: scaleFunLoving, required: true},
+          {prompt: "", labels: scaleLikable, required: true},
+          {prompt: "", labels: scalePopular, required: true},
+          {prompt: "", labels: scaleIntelligent, required: true},
+          {prompt: "", labels: scaleSkillful, required: true},
+          {prompt: "", labels: scaleRational, required: true},
+          {prompt: "", labels: scaleScientific, required: true},
+          {prompt: "", labels: scaleAmbitious, required: true},
+          {prompt: "", labels: scaleHardWorking, required: true},
+          {prompt: "", labels: scaleGrade, required: true},
+          {prompt: "", labels: scaleSuccess, required: true},
+          {prompt: "", labels: scaleSensitive, required: true},
+          {prompt: "", labels: scaleEmpathic, required: true},
+          {prompt: "", labels: scaleCompassionate, required: true},
+          {prompt: "", labels: scaleGenerous, required: true},
+          {prompt: "", labels: scaleModest, required: true},
+          {prompt: "", labels: scaleEgoistic, required: true},
+          {prompt: "", labels: scaleTrustworthy, required: true},
+          {prompt: "", labels: scaleHonest, required: true},
+          {prompt: "", labels: scaleFaithful, required: true},
+          {prompt: "", labels: scaleNormal, required: true},
+          {prompt: "", labels: scaleWellAdjusted, required: true},
+          {prompt: "", labels: scaleSatisfied, required: true},
+          {prompt: "", labels: scaleHappy, required: true},
+          {prompt: "", labels: scaleConfident, required: true},
+          {prompt: "", labels: scaleSelfRegard, required: true},
+          {prompt: "", labels: scaleMature, required: true},
+          {prompt: "", labels: scaleHealthy, required: true},
+          {prompt: "", labels: scaleStrong, required: true},
+          {prompt: "", labels: scaleSelfAssertive, required: true},
+          {prompt: "", labels: scaleDominant, required: true},
+          {prompt: "", labels: scaleLeader, required: true},
+          {prompt: "", labels: scaleVain, required: true},
+          {prompt: "", labels: scaleElitist, required: true},
+          {prompt: "", labels: scaleSnobbish, required: true},
+          {prompt: "", labels: scaleShallow, required: true},
+          {prompt: "", labels: scaleHumble, required: true},
+          {prompt: "", labels: scaleMaterialistic, required: true},
+          {prompt: "", labels: scalePompous, required: true},
+          {prompt: "", labels: scalePrudish, required: true},
+          {prompt: "", labels: scaleBoastfull, required: true},
+        ],
+        randomize_question_order: true, 
+        button_label: 'Continue',
+        on_load: function() {
+          window.scrollTo(0, 0);
+          $(".jspsych-content").css("max-width", "100%");
+          $(".jspsych-content").css("margin-top", "430px");
+          $(".jspsych-survey-likert-statement").css("margin", "0px");
+          $(".jspsych-survey-likert-statement").css("padding", "0px");
+          $(".jspsych-survey-likert-opts").css("padding", "0 0 10px");
+          $("#jspsych-survey-likert-next").css("margin-top", "10px");
+          $("#jspsych-survey-likert-form").css("width", "800px");
+          $("li").css("width", "9%");
+        //   $("li:first-of-type").css("width", "110px");
+        //   $("li:last-of-type").css("width", "110px");
+        },
+        on_finish: function(data) {
+          var parsed_response  = JSON.parse(data.responses);
+          data.sociable      = parsed_response.Q0 * 10;
+          data.funloving     = parsed_response.Q1 * 10;
+          data.likable       = parsed_response.Q2 * 10;
+          data.popular       = parsed_response.Q3 * 10;
+          data.intelligent   = parsed_response.Q4 * 10;
+          data.skillful      = parsed_response.Q5 * 10;
+          data.rational      = parsed_response.Q6 * 10;
+          data.scientific    = parsed_response.Q7 * 10;
+          data.ambitious     = parsed_response.Q8 * 10;
+          data.hardworking   = parsed_response.Q9 * 10;
+          data.grade         = parsed_response.Q10 * 10;
+          data.success       = parsed_response.Q11 * 10;
+          data.sensitive     = parsed_response.Q12 * 10;
+          data.empathic      = parsed_response.Q13 * 10;
+          data.compassionate = parsed_response.Q14 * 10;
+          data.generous      = parsed_response.Q15 * 10;
+          data.modest        = parsed_response.Q16 * 10;
+          data.egoistic      = parsed_response.Q17 * 10;
+          data.trustworthy   = parsed_response.Q18 * 10;
+          data.honest        = parsed_response.Q19 * 10;
+          data.faithful      = parsed_response.Q20 * 10;
+          data.normal        = parsed_response.Q21 * 10;
+          data.welladjusted  = parsed_response.Q22 * 10;
+          data.satisfied     = parsed_response.Q23 * 10;
+          data.happy         = parsed_response.Q24 * 10;
+          data.confident     = parsed_response.Q25 * 10;
+          data.selfregard    = parsed_response.Q26 * 10;
+          data.mature        = parsed_response.Q27 * 10;
+          data.healthy       = parsed_response.Q28 * 10;
+          data.strong        = parsed_response.Q29 * 10;
+          data.selfassertive = parsed_response.Q30 * 10;
+          data.dominant      = parsed_response.Q31 * 10;
+          data.leader        = parsed_response.Q32 * 10;
+          data.vain          = parsed_response.Q33 * 10;
+          data.elitist       = parsed_response.Q34 * 10;
+          data.snobbish      = parsed_response.Q35 * 10;
+          data.shallow       = parsed_response.Q36 * 10;
+          data.humble        = parsed_response.Q37 * 10;
+          data.materialistic = parsed_response.Q38 * 10;
+          data.pompous       = parsed_response.Q39 * 10;
+          data.prudish       = parsed_response.Q40 * 10;
+          data.boastfull     = parsed_response.Q41 * 10;
+          data.facejudged    = ciImg.imgHtml;
+        },
+    };
+    judgments_dimensions.push(likert_trial);
+  });
+
+// Judgments on attractiveness
+
+var scaleAttractiveness = ["-3</br>Extremely unattractive", "-2", "-1", "0", "1", "2", "3</br>Extremely attractive"];
+
+  var judgments_attractiveness = [];
+  FaceStims.map(function(ciImg){
+    var likert_trial = {
+        type: 'survey-likert',
+        preamble: ciImg.imgHtml,
+        questions: [
+          {prompt: "", labels: scaleAttractiveness, required: true},
+        ],
+        randomize_question_order: true, /// !!!! does not work
+        button_label: 'Continue',
+        on_load: function() {
+          window.scrollTo(0, 0);
+          $(".jspsych-content").css("max-width", "100%");
+          $(".jspsych-content").css("margin-top", "430px");
+          $(".jspsych-survey-likert-statement").css("margin", "0px");
+          $(".jspsych-survey-likert-statement").css("padding", "0px");
+          $(".jspsych-survey-likert-opts").css("padding", "0 0 10px");
+          $("#jspsych-survey-likert-next").css("margin-top", "10px");
+          $("#jspsych-survey-likert-form").css("width", "800px");
+          $("li").css("width", "9%");
+        //   $("li:first-of-type").css("width", "110px");
+        //   $("li:last-of-type").css("width", "110px");
+        },
+        on_finish: function(data) {
+          var parsed_response  = JSON.parse(data.responses);
+          data.attractiveness    = parsed_response.Q0 * 10;
+          data.facejudged    = ciImg.imgHtml;
+          //data.faceattract              = ciImg.imgHtml;
+        },
+    };
+    judgments_attractiveness.push(likert_trial);
+  });
+
+  /* Self-assessment INSTRUCTIONS */
+  var SelfAssessment_instr = {
+    type: "html-keyboard-response",
+    post_trial_gap: 300,
+    choices: [32],
+    stimulus: function() {
+      var html = "";
+      html += "<h1>Study of accuracy in person perception: Part 2</h1>";
+      html += "<p class='justify'>The first part of the study is over. </br> ";
+      html += "<p class='justify'>Now, you will be asked to complete <b>four questionaires measuring your personality. </b>";
+      html += "As before, it is extremely important that you try to answer <b> as honestly and as spontaneously as possible. We are only interested in your true personality here. Again, keep in mind that <b>your responses are anonymous </b>and will be analyzed in an aggregated way with the answers of other participants</b></br></br><br>";
+      html += "<p></br>Press <span class='light-keys'><kbd>space</kbd></span> to begin</p>";
+      return html;
+    },
+    on_load: function() {
+      window.scrollTo(0, 0);
+       $(".jspsych-content").css("margin-top", "200px");
+       $(".jspsych-content").css("max-width", "90%");
+    },
+  };
+
+// Personality ratings
+// IPIP-PC
+var scale_ipip_pc = ["1</br>Very inaccurate", "2</br>Moderately inaccurate", "3</br>Neither inaccurate nor accurate", "4</br>Moderately accurate", "5</br>Very accurate"];
+
+    var judgments_IPIP_PC = {
+        type: 'survey-likert',
+        preamble: "<h1>Questionnaire 1/4</h1>"+
+                  "Here are phrases describing people’s behaviors (see below). Please use the rating scale <br>"+
+                  "below to describe <b>how accurately each statement describes you.</b> Describe yourself <br>"+
+                  "<b>as you generally are now</b>, not as you wish to be in the future. Describe yourself <b>as you <br>"+
+                  "honestly see yourself</b>, in relation to other people you know of the same gender as you are, <br>"+
+                  "and roughly your same age. Please read each statement carefully, and then select the number <br>"+
+                  "that corresponds to your response using the scale from 1 = Very inaccurate to 5 = Very accurate.<br><br><br>",
+        questions: [
+          {prompt: "<b>Am quiet around strangers.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Speak softly.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Tolerate a lot from others.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Am interested in people.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Feel comfortable around people.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Demand to be the center of interest.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Cut others to pieces.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Believe people should fend for themselves.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Am a very private person.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Let others finish what they are saying.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Take things as they come.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Reassure others.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Start conversations.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Do most of the talking.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Contradict others.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Don't fall for sob-stories.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Don't talk a lot.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Seldom toot my own horn.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Think of others first.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Inquire about others' well-being.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Talk to a lot of different people at parties.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Speak loudly.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Snap at people.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Don't put a lot of thought into things.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Have little to say.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Dislike being the center of attention.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Seldom stretch the truth.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Get along well with others.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Love large parties.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Demand attention.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Have a sharp tongue.</b>", labels: scale_ipip_pc, required: true},
+          {prompt: "<b>Am not interested in other people's problems.</b>", labels: scale_ipip_pc, required: true}
+        ],
+        randomize_question_order: false,
+        button_label: 'Continue',
+        on_load: function() {
+          window.scrollTo(0, 0);
+          $(".jspsych-content").css("max-width", "100%");
+          $(".jspsych-content").css("margin-top", "200px");
+          $(".jspsych-survey-likert-statement").css("margin", "0px");
+          $(".jspsych-survey-likert-statement").css("padding", "0px");
+          $(".jspsych-survey-likert-opts").css("padding", "0 0 10px");
+          $("#jspsych-survey-likert-next").css("margin-top", "10px");
+          $("#jspsych-survey-likert-form").css("width", "800px");
+          $("li").css("width", "9%");
+        },
+        on_finish: function(data) {
+          var parsed_response  = JSON.parse(data.responses);
+          data.ipip_pc_1             = parsed_response.Q0 * 10;
+          data.ipip_pc_2             = parsed_response.Q1 * 10;
+          data.ipip_pc_3             = parsed_response.Q2 * 10;
+          data.ipip_pc_4             = parsed_response.Q3 * 10;
+          data.ipip_pc_5             = parsed_response.Q4 * 10;
+          data.ipip_pc_6             = parsed_response.Q5 * 10;
+          data.ipip_pc_7             = parsed_response.Q6 * 10;
+          data.ipip_pc_8             = parsed_response.Q7 * 10;
+          data.ipip_pc_9             = parsed_response.Q8 * 10;
+          data.ipip_pc_10             = parsed_response.Q9 * 10;
+          data.ipip_pc_11             = parsed_response.Q10 * 10;
+          data.ipip_pc_12             = parsed_response.Q11 * 10;
+          data.ipip_pc_13             = parsed_response.Q12 * 10;
+          data.ipip_pc_14             = parsed_response.Q13 * 10;
+          data.ipip_pc_15             = parsed_response.Q14 * 10;
+          data.ipip_pc_16             = parsed_response.Q15 * 10;
+          data.ipip_pc_17             = parsed_response.Q16 * 10;
+          data.ipip_pc_18             = parsed_response.Q17 * 10;
+          data.ipip_pc_19             = parsed_response.Q18 * 10;
+          data.ipip_pc_20             = parsed_response.Q19 * 10;
+          data.ipip_pc_21             = parsed_response.Q20 * 10;
+          data.ipip_pc_22             = parsed_response.Q21 * 10;
+          data.ipip_pc_23             = parsed_response.Q22 * 10;
+          data.ipip_pc_24             = parsed_response.Q23 * 10;
+          data.ipip_pc_25             = parsed_response.Q24 * 10;
+          data.ipip_pc_26             = parsed_response.Q25 * 10;
+          data.ipip_pc_27             = parsed_response.Q26 * 10;
+          data.ipip_pc_28             = parsed_response.Q27 * 10;
+          data.ipip_pc_29             = parsed_response.Q28 * 10;
+          data.ipip_pc_30             = parsed_response.Q29 * 10;
+          data.ipip_pc_31             = parsed_response.Q30 * 10;
+          data.ipip_pc_32             = parsed_response.Q31 * 10
+        },
+    };
+
+// HEXACO-PI 60
+var scale_hexaco = ["1</br>Strongly disagree", "2</br>disagree", "3</br>neutral (neither agree nor disagree)", "4</br>agree", "5</br>Strongly agree"];
+
+    var judgments_HEXACO_PI_60 = {
+        type: 'survey-likert',
+        preamble: "<h1>Questionnaire 2/4</h1>"+
+                  "Here is a series of statements about you (see below). Please read each statement and decide <br>"+
+                  "<b>how much you agree or disagree with that statement</b>. Then, select your response using <br>"+
+                  "the scale from 1 = strongly disagree to 5 = strongly agree.<br><br><br>",
+        questions: [
+          {prompt: "<b>I would be quite bored by a visit to an art gallery.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I plan ahead and organize things, to avoid scrambling at the last minute.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I would feel afraid if I had to travel in bad weather conditions.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I’m interested in learning about the history and politics of other countries.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I often push myself very hard when trying to achieve a goal.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I sometimes can't help worrying about little things.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I would enjoy creating a work of art, such as a novel, a song, or a painting.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>When working on something, I don't pay much attention to small details.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>When I suffer from a painful experience, I need someone to make me feel comfortable.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I think that paying attention to radical ideas is a waste of time.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I make decisions based on the feeling of the moment rather than on careful thought.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I feel like crying when I see other people crying.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>If I had the opportunity, I would like to attend a classical music concert.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>When working, I sometimes have difficulties due to being disorganized.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>When it comes to physical danger, I am very fearful.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I’ve never really enjoyed looking through an encyclopedia.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I do only the minimum amount of work needed to get by.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I worry a lot less than most people do.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>People have often told me that I have a good imagination.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I always try to be accurate in my work, even at the expense of time.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I can handle difficult situations without needing emotional support from anyone else.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I like people who have unconventional views.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I make a lot of mistakes because I don’t think before I act.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I feel strong emotions when someone close to me is going away for a long time.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I don’t think of myself as the artistic or creative type.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>People often call me a perfectionist.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>Even in an emergency I wouldn’t feel like panicking.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I find it boring to discuss philosophy.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I prefer to do whatever comes to mind, rather than stick to a plan.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I remain unemotional even in situations where most people get very sentimental.</b>", labels: scale_hexaco, required: true}
+        ],
+        randomize_question_order: false,
+        button_label: 'Continue',
+        on_load: function() {
+          window.scrollTo(0, 0);
+          $(".jspsych-content").css("max-width", "100%");
+          $(".jspsych-content").css("margin-top", "200px");
+          $(".jspsych-survey-likert-statement").css("margin", "0px");
+          $(".jspsych-survey-likert-statement").css("padding", "0px");
+          $(".jspsych-survey-likert-opts").css("padding", "0 0 10px");
+          $("#jspsych-survey-likert-next").css("margin-top", "10px");
+          $("#jspsych-survey-likert-form").css("width", "800px");
+          $("li").css("width", "9%");
+        },
+        on_finish: function(data) {
+          var parsed_response  = JSON.parse(data.responses);
+          data.hexaco_60_Openness_1              = parsed_response.Q0 * 10;
+          data.hexaco_60_Conscientiousness_2     = parsed_response.Q1 * 10;
+          data.hexaco_60_Emotionality_5          = parsed_response.Q2 * 10;
+          data.hexaco_60_Openness_7              = parsed_response.Q3 * 10;
+          data.hexaco_60_Conscientiousness_8     = parsed_response.Q4 * 10;
+          data.hexaco_60_Emotionality_11         = parsed_response.Q5 * 10;
+          data.hexaco_60_Openness_13             = parsed_response.Q6 * 10;
+          data.hexaco_60_Conscientiousness_14    = parsed_response.Q7 * 10;
+          data.hexaco_60_Emotionality_17         = parsed_response.Q8 * 10;
+          data.hexaco_60_Openness_19             = parsed_response.Q9 * 10;
+          data.hexaco_60_Conscientiousness_20    = parsed_response.Q10 * 10;
+          data.hexaco_60_Emotionality_23         = parsed_response.Q11 * 10;
+          data.hexaco_60_Openness_25             = parsed_response.Q12 * 10;
+          data.hexaco_60_Conscientiousness_26    = parsed_response.Q13 * 10;
+          data.hexaco_60_Emotionality_29         = parsed_response.Q14 * 10;
+          data.hexaco_60_Openness_31             = parsed_response.Q15 * 10;
+          data.hexaco_60_Conscientiousness_32    = parsed_response.Q16 * 10;
+          data.hexaco_60_Emotionality_35         = parsed_response.Q17 * 10;
+          data.hexaco_60_Openness_37             = parsed_response.Q18 * 10;
+          data.hexaco_60_Conscientiousness_38    = parsed_response.Q19 * 10;
+          data.hexaco_60_Emotionality_41         = parsed_response.Q20 * 10;
+          data.hexaco_60_Openness_43             = parsed_response.Q21 * 10;
+          data.hexaco_60_Conscientiousness_44    = parsed_response.Q22 * 10;
+          data.hexaco_60_Emotionality_47         = parsed_response.Q23 * 10;
+          data.hexaco_60_Openness_49             = parsed_response.Q24 * 10;
+          data.hexaco_60_Conscientiousness_50    = parsed_response.Q25 * 10;
+          data.hexaco_60_Emotionality_53         = parsed_response.Q26 * 10;
+          data.hexaco_60_Openness_55             = parsed_response.Q27 * 10;
+          data.hexaco_60_Conscientiousness_56    = parsed_response.Q28 * 10;
+          data.hexaco_60_Emotionality_59         = parsed_response.Q29 * 10
+        },
+    };
+
+// HEXACO-PI 100
+    var judgments_HEXACO_PI_100 = {
+        type: 'survey-likert',
+        preamble: "<h1>Questionnaire 3/4</h1>"+
+                  "Again, here is a series of statements about you (see below). Please read each statement and decide <br>"+
+                  "<b>how much you agree or disagree with that statement</b>. Then, select your response using <br>"+
+                  "the scale from 1 = strongly disagree to 5 = strongly agree.<br><br><br>",
+        questions: [
+          {prompt: "<b>I rarely hold a grudge, even against people who have badly wronged me.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I feel reasonably satisfied with myself overall.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>If I want something from a person I dislike, I will act very nicely toward that person in order to get it.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>People sometimes tell me that I am too critical of others.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I rarely express my opinions in group meetings.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>If I knew that I could never get caught, I would be willing to steal a million dollars.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>People sometimes tell me that I'm too stubborn.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I avoid making 'small talk' with people.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>Having a lot of money is not especially important to me.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>People think of me as someone who has a quick temper.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I am energetic nearly all the time.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I am an ordinary person who is no better than others.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>My attitude toward people who have treated me badly is 'forgive and forget'.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I think that most people like some aspects of my personality.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I wouldn't use flattery to get a raise or promotion at work, even if I thought it would succeed.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I generally accept people’s faults without complaining about them.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>In social situations, I'm usually the one who makes the first move.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I would be tempted to buy stolen property if I were financially tight.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I am usually quite flexible in my opinions when people disagree with me.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I enjoy having lots of people around to talk with.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I would like to live in a very expensive, high-class neighborhood.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I rarely feel anger, even when people treat me quite badly.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>On most days, I feel cheerful and optimistic.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I wouldn’t want people to treat me as though I were superior to them.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>If someone has cheated me once, I will always feel suspicious of that person.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I feel that I am an unpopular person.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>If I want something from someone, I will laugh at that person's worst jokes.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I tend to be lenient in judging other people.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>When I'm in a group of people, I'm often the one who speaks on behalf of the group.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I would never accept a bribe, even if it were very large.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>When people tell me that I’m wrong, my first reaction is to argue with them.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I prefer jobs that involve active social interaction to those that involve working alone.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I would like to be seen driving around in a very expensive car.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>Most people tend to get angry more quickly than I do.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>People often tell me that I should try to cheer up.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I think that I am entitled to more respect than the average person is.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I find it hard to fully forgive someone who has done something mean to me.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I sometimes feel that I am a worthless person.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I wouldn't pretend to like someone just to get that person to do favors for me.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>Even when people make a lot of mistakes, I rarely say anything negative.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I tend to feel quite self-conscious when speaking in front of a group of people.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I’d be tempted to use counterfeit money, if I were sure I could get away with it.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I find it hard to compromise with people when I really think I’m right.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>The first thing that I always do in a new place is to make friends.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I would get a lot of pleasure from owning expensive luxury goods.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I find it hard to keep my temper when people insult me.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>Most people are more upbeat and dynamic than I generally am.</b>", labels: scale_hexaco, required: true},
+          {prompt: "<b>I want people to know that I am an important person of high status.</b>", labels: scale_hexaco, required: true}
+
+          
+        ],
+        randomize_question_order: false,
+        button_label: 'Continue',
+        on_load: function() {
+          window.scrollTo(0, 0);
+          $(".jspsych-content").css("max-width", "100%");
+          $(".jspsych-content").css("margin-top", "200px");
+          $(".jspsych-survey-likert-statement").css("margin", "0px");
+          $(".jspsych-survey-likert-statement").css("padding", "0px");
+          $(".jspsych-survey-likert-opts").css("padding", "0 0 10px");
+          $("#jspsych-survey-likert-next").css("margin-top", "10px");
+          $("#jspsych-survey-likert-form").css("width", "800px");
+          $("li").css("width", "9%");
+        },
+        on_finish: function(data) {
+          var parsed_response  = JSON.parse(data.responses);
+          data.hexaco_100_Agreeableness_3             = parsed_response.Q0 * 10;
+          data.hexaco_100_Extraversion_4              = parsed_response.Q1 * 10;
+          data.hexaco_100_Hon_Hum_6                   = parsed_response.Q2 * 10;
+          data.hexaco_100_Agreeableness_9             = parsed_response.Q3 * 10;
+          data.hexaco_100_Extraversion_10             = parsed_response.Q4 * 10;
+          data.hexaco_100_Hon_Hum_12                  = parsed_response.Q5 * 10;
+          data.hexaco_100_Agreeableness_15            = parsed_response.Q6 * 10;
+          data.hexaco_100_Extraversion_16             = parsed_response.Q7 * 10;
+          data.hexaco_100_Hon_Hum_18                  = parsed_response.Q8 * 10;
+          data.hexaco_100_Agreeableness_21            = parsed_response.Q9 * 10;
+          data.hexaco_100_Extraversion_22             = parsed_response.Q10 * 10;
+          data.hexaco_100_Hon_Hum_24                  = parsed_response.Q11 * 10;
+          data.hexaco_100_Agreeableness_27            = parsed_response.Q12 * 10;
+          data.hexaco_100_Extraversion_28             = parsed_response.Q13 * 10;
+          data.hexaco_100_Hon_Hum_30                  = parsed_response.Q14 * 10;
+          data.hexaco_100_Agreeableness_33            = parsed_response.Q15 * 10;
+          data.hexaco_100_Extraversion_34             = parsed_response.Q16 * 10;
+          data.hexaco_100_Hon_Hum_36                  = parsed_response.Q17 * 10;
+          data.hexaco_100_Agreeableness_39           = parsed_response.Q18 * 10;
+          data.hexaco_100_Extraversion_40             = parsed_response.Q19 * 10;
+          data.hexaco_100_Hon_Hum_42                  = parsed_response.Q20 * 10;
+          data.hexaco_100_Agreeableness_45            = parsed_response.Q21 * 10;
+          data.hexaco_100_Extraversion_46             = parsed_response.Q22 * 10;
+          data.hexaco_100_Hon_Hum_48                  = parsed_response.Q23 * 10;
+          data.hexaco_100_Agreeableness_51            = parsed_response.Q24 * 10;
+          data.hexaco_100_Extraversion_52             = parsed_response.Q25 * 10;
+          data.hexaco_100_Hon_Hum_54                  = parsed_response.Q26 * 10;
+          data.hexaco_100_Agreeableness_57            = parsed_response.Q27 * 10;
+          data.hexaco_100_Extraversion_58            = parsed_response.Q28 * 10;
+          data.hexaco_100_Hon_Hum_60                  = parsed_response.Q29 * 10;
+          data.hexaco_100_Agreeableness_63            = parsed_response.Q30 * 10;
+          data.hexaco_100_Extraversion_64             = parsed_response.Q31 * 10;
+          data.hexaco_100_Hon_Hum_66                  = parsed_response.Q32 * 10;
+          data.hexaco_100_Agreeableness_69            = parsed_response.Q33 * 10;
+          data.hexaco_100_Extraversion_70             = parsed_response.Q34 * 10;
+          data.hexaco_100_Hon_Hum_72                  = parsed_response.Q35 * 10;
+          data.hexaco_100_Agreeableness_75            = parsed_response.Q36 * 10;
+          data.hexaco_100_Extraversion_76             = parsed_response.Q37 * 10;
+          data.hexaco_100_Hon_Hum_78                  = parsed_response.Q38 * 10;
+          data.hexaco_100_Agreeableness_81            = parsed_response.Q39 * 10;
+          data.hexaco_100_Extraversion_82             = parsed_response.Q40 * 10;
+          data.hexaco_100_Hon_Hum_84                  = parsed_response.Q41 * 10;
+          data.hexaco_100_Agreeableness_87            = parsed_response.Q42 * 10;
+          data.hexaco_100_Extraversion_88             = parsed_response.Q43 * 10;
+          data.hexaco_100_Hon_Hum_90                  = parsed_response.Q44 * 10;
+          data.hexaco_100_Agreeableness_93            = parsed_response.Q45 * 10;
+          data.hexaco_100_Extraversion_94             = parsed_response.Q46 * 10;
+          data.hexaco_100_Hon_Hum_96                  = parsed_response.Q47 * 10
+        },
+    };
+
+
+// BFAS
+    var scale_bfas = ["1</br>Strongly disagree", "2", "3</br>Neither agree nor disagree", "4", "5</br>Strongly agree"];
+
+    var judgments_BFAS = {
+        type: 'survey-likert',
+        preamble: "<h1>Questionnaire 4/4</h1>"+
+                  "Here are a number of characteristics that may or may not describe you. For example, do you <br>"+
+                  "agree that you rarely feel blue, compared to most other people? Please <b>select the number that <br>"+
+                  "best indicates the extent to which you agree or disagree with each statement </b>listed below. <br>"+
+                  "Be as honest as possible, but rely on your initial feeling and do not think too much about each item. <br><br><br>",
+        questions: [
+          {prompt: "<b>Am not interested in other people’s problems.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Make friends easily.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Respect authority.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Take charge.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Feel others’ emotions.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Am hard to get to know.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Believe that I am better than others.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Have a strong personality.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Inquire about others’ well-being.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Keep others at a distance.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Hate to seem pushy.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Lack the talent for influencing people.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Can’t be bothered with other’s needs.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Reveal little about myself.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Take advantage of others.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Know how to captivate people.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Sympathize with others’ feelings.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Warm up quickly to others.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Avoid imposing my will on others.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Wait for others to lead the way.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Am indifferent to the feelings of others.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Rarely get caught up in the excitement.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Rarely put people under pressure.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>See myself as a good leader.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Take no time for others.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Am not a very enthusiastic person.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Insult people.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Can talk others into doing things.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Take an interest in other people’s lives.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Show my feelings when I’m happy.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Seek conflict.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Hold back my opinions.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Don’t have a soft side.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Have a lot of fun.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Love a good fight.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Am the first to act.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Like to do things for others.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Laugh a lot.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Am out for my own personal gain.</b>", labels: scale_bfas, required: true},
+          {prompt: "<b>Do not have an assertive personality.</b>", labels: scale_bfas, required: true}
+        ],
+        randomize_question_order: false,
+        button_label: 'Continue',
+        on_load: function() {
+          window.scrollTo(0, 0);
+          $(".jspsych-content").css("max-width", "100%");
+          $(".jspsych-content").css("margin-top", "200px");
+          $(".jspsych-survey-likert-statement").css("margin", "0px");
+          $(".jspsych-survey-likert-statement").css("padding", "0px");
+          $(".jspsych-survey-likert-opts").css("padding", "0 0 10px");
+          $("#jspsych-survey-likert-next").css("margin-top", "10px");
+          $("#jspsych-survey-likert-form").css("width", "800px");
+          $("li").css("width", "9%");
+        },
+        on_finish: function(data) {
+          var parsed_response  = JSON.parse(data.responses);
+          data.hexaco_bfas_Agreeableness_2             = parsed_response.Q0 * 10;
+          data.hexaco_bfas_Extraversion_4              = parsed_response.Q1 * 10;
+          data.hexaco_bfas_Agreeableness_7             = parsed_response.Q2 * 10;
+          data.hexaco_bfas_Extraversion_9              = parsed_response.Q3 * 10;
+          data.hexaco_bfas_Agreeableness_12            = parsed_response.Q4 * 10;
+          data.hexaco_bfas_Extraversion_14             = parsed_response.Q5 * 10;
+          data.hexaco_bfas_Agreeableness_17            = parsed_response.Q6 * 10;
+          data.hexaco_bfas_Extraversion_19             = parsed_response.Q7 * 10;
+          data.hexaco_bfas_Agreeableness_22            = parsed_response.Q8 * 10;
+          data.hexaco_bfas_Extraversion_24             = parsed_response.Q9 * 10;
+          data.hexaco_bfas_Agreeableness_27            = parsed_response.Q10 * 10;
+          data.hexaco_bfas_Extraversion_29             = parsed_response.Q11 * 10;
+          data.hexaco_bfas_Agreeableness_32            = parsed_response.Q12 * 10;
+          data.hexaco_bfas_Extraversion_34             = parsed_response.Q13 * 10;
+          data.hexaco_bfas_Agreeableness_37            = parsed_response.Q14 * 10;
+          data.hexaco_bfas_Extraversion_39             = parsed_response.Q15 * 10;
+          data.hexaco_bfas_Agreeableness_42            = parsed_response.Q16 * 10;
+          data.hexaco_bfas_Extraversion_44             = parsed_response.Q17 * 10;
+          data.hexaco_bfas_Agreeableness_47            = parsed_response.Q18 * 10;
+          data.hexaco_bfas_Extraversion_49             = parsed_response.Q19 * 10;
+          data.hexaco_bfas_Agreeableness_52            = parsed_response.Q20 * 10;
+          data.hexaco_bfas_Extraversion_54             = parsed_response.Q21 * 10;
+          data.hexaco_bfas_Agreeableness_57            = parsed_response.Q22 * 10;
+          data.hexaco_bfas_Extraversion_59             = parsed_response.Q23 * 10;
+          data.hexaco_bfas_Agreeableness_62            = parsed_response.Q24 * 10;
+          data.hexaco_bfas_Extraversion_64             = parsed_response.Q25 * 10;
+          data.hexaco_bfas_Agreeableness_67            = parsed_response.Q26 * 10;
+          data.hexaco_bfas_Extraversion_69             = parsed_response.Q27 * 10;
+          data.hexaco_bfas_Agreeableness_72            = parsed_response.Q28 * 10;
+          data.hexaco_bfas_Extraversion_74             = parsed_response.Q29 * 10;
+          data.hexaco_bfas_Agreeableness_77            = parsed_response.Q30 * 10;
+          data.hexaco_bfas_Extraversion_79             = parsed_response.Q31 * 10;
+          data.hexaco_bfas_Agreeableness_82            = parsed_response.Q32 * 10;
+          data.hexaco_bfas_Extraversion_84             = parsed_response.Q33 * 10;
+          data.hexaco_bfas_Agreeableness_87            = parsed_response.Q34 * 10;
+          data.hexaco_bfas_Extraversion_89             = parsed_response.Q35 * 10;
+          data.hexaco_bfas_Agreeableness_92            = parsed_response.Q36 * 10;
+          data.hexaco_bfas_Extraversion_94             = parsed_response.Q37 * 10;
+          data.hexaco_bfas_Agreeableness_97            = parsed_response.Q38 * 10;
+          data.hexaco_bfas_Extraversion_99             = parsed_response.Q39 * 10
+        },
+    };
+
+
+
+  /* AGE */
+  var age = {
+      timeline: [{
+        type: 'survey-text',
+        questions: [{prompt: "How old are you?", rows: 1, columns: 10}],
+        button_label: "Continue",
+      }],
+      on_load: function() {
+          window.scrollTo(0, 0);
+          $(".jspsych-content").css("margin-top", "200px");
+          $(".jspsych-content").css("max-width", "90%");
+        },
+      loop_function: function(data){ 
+        var age = data.values()[0].responses;
+        var age = JSON.parse(age).Q0; 
+        if(age == ""){
+          alert("Please indicate your age"); 
+          return true; 
+        }
+      },
+      on_finish: function(data) {
+          jsPsych.data.addProperties({
+              age: JSON.parse(data.responses)["Q0"],
+          });
+      },
+  };
+
+  var gender = {
+      type: 'survey-multi-choice',
+      questions: [{prompt: "Please indicate your gender:", options: ['Male', 'Female', 'Other'], required: true}],
+      button_label: "Continue",
+      on_finish: function(data) {
+          jsPsych.data.addProperties({
+              gender: JSON.parse(data.responses)["Q0"],
+          });
+      },
+  };
+
+  var languageOptions = ['Native speaker', 'Very well', 'Well', 'Average', 'Badly', 'Very badly'];
+  var language = {
+        type: 'survey-multi-choice',
+        questions: [{ prompt: "How well do you speak english?", options: languageOptions, required: true }],
+        button_label: "continue",
+        on_finish: function (data) {
+            jsPsych.data.addProperties({
+                language: JSON.parse(data.responses).Q0,
+            });
+            console.log(data);
+        },
+    };
+
+  var Prolific_reported = {
+        timeline: [{
+            type: 'survey-text',
+            questions: [{ prompt: 'Please indicate your Prolific ID:', rows: 3, columns: 60 }],
+            button_label: "continue",
+        }],
+        loop_function: function (data) {
+            var res = data.values()[0].responses;
+            var res = JSON.parse(res).Q0;
+            if (res == "") {
+                alert("Please answer the question");
+                return true;
+            }
+        },
+        on_finish: function (data) {
+            jsPsych.data.addProperties({
+                Prolific_reported: JSON.parse(data.responses).Q0,
+            });
+        },
+    };
+
+  var comments = {
+        timeline: [{
+            type: 'survey-text',
+            questions: [{ prompt: 'Do you have comments regarding this study? [Optional]', rows: 3, columns: 60 }],
+            button_label: "continue",
+        }],
+        on_finish: function (data) {
+            jsPsych.data.addProperties({
+                Comment: JSON.parse(data.responses).Q0,
+            });
+        },
+    };
+
+
+  /* EXIT FULLSCREEN MODE */
+  var exitFullscreen = {
+    type: 'fullscreen',
+    fullscreen_mode: false
+  };
+
+  /* DEBRIEF */
+  var debrief = [];
+  debrief += "<h1>End of the study</h1>";
+  debrief += "<p class='justify'>Thank you for participating in this online experiment!<br><br>";
+  debrief += "In some experiments, we cannot tell people everything about the experiment at the beginning because their responses would not be ";
+  debrief += "natural. For example, if we told people what the point of the experiment was ahead of time, then some people might do whatever ";
+  debrief += "it is they think we want them to do, just to be helpful. Other people might do the exact opposite of what they think we want "; 
+  debrief += "them to do, just to show us that we can't figure them out. When people are trying to second-guess what the experiment is "; 
+  debrief += "really about, and they behave a certain way because of it, our results gets messed up. That's because they aren't behaving "; 
+  debrief += "like they naturally would in the real world. The whole point of this experiment is to find out how people would ";
+  debrief += "naturally behave.<br><br>";
+  debrief += "Now we'd like to explain what we were trying to learn about with this study. First of all, you should know that the aim of "; 
+  debrief += "this study was not to investigate your perception accuracy. Perception accuracy is not a real ability. Instead, our "; 
+  debrief += "aim was to test whether your judgment of the three persons you saw depended on their physical attractiveness. Indeed "; 
+  debrief += "individuals tend to attribute many positive qualities to attractive persons. For instance, when a person is attractive, "; 
+  debrief += "people tend to think that s/he is also trustworthy.<br><br>";
+  debrief += "Our goal is to test if we can find a similar effect (that is called the “attractiveness Halo effect”) in the present study "; 
+  debrief += "Our hypothesis was thus that the positivity of "; 
+  debrief += "participants’ evaluations should increase as a function of the physical attractiveness of the faces. <br><br>";
+  debrief += "Moreover, we would like to investigate whether this attractiveness effect depends on people's personality (e.g., the fact of"
+  debrief += "being more honest or more extrovered), what we measured in the second part of the study."
+  debrief += "We would like to emphasize that there are no correct responses in this study: We were looking at people’s natural responses. ";
+  debrief += "We hope you understand that we couldn't tell you all of this before because it would have ruined our study. ";
+  debrief += "Again, your responses will be anonymous and will be analyzed as part of a group of responses.</br></br>";
+  debrief += "We hope this explanation was clear. If you want additional information, if you have any questions, or if you would like ";
+  debrief += "to withdraw consent and have your data excluded, do not hesitate to contact us via Prolific Academic. If you are "; 
+  debrief += "interested, you can also ask for the results of this experiment—be aware, however, that this could take several weeks "; 
+  debrief += "to gather all the data we need and to analyze them. <br><br>";
+  debrief += "You can copy this code on Prolific: <b>1848E97F</b> ";
+  debrief += "or you can click on the following link to validate your participation:</p>";
+  debrief += "<a href='https://app.prolific.co/submissions/complete?cc=1848E97F' target='_blank'>click here</a>";
+
+
+  // TIMELINE ----------------------------------------------------------------------------------------------------------
+  timeline.push(consent);
+  timeline.push(Quit_expe);
+  timeline.push(activeFullscreen);
+  timeline.push(Instr_gene0);
+  timeline.push(Instr_gene1);
+  timeline.push(Instr_gene2);
+  timeline.push(jugmentInst_stim);
+  timeline.push(judgments_dimensions);
+  timeline.push(attractiveness_instr);
+  timeline.push(judgments_attractiveness);
+  timeline.push(SelfAssessment_instr);
+  timeline.push(judgments_IPIP_PC);
+  timeline.push(judgments_HEXACO_PI_60);
+  timeline.push(judgments_HEXACO_PI_100);
+  timeline.push(judgments_BFAS);
+  timeline.push(age);
+  timeline.push(gender);
+  timeline.push(language);
+  timeline.push(Prolific_reported);
+  timeline.push(comments);
+  timeline.push(exitFullscreen);
+  
+  timeline = _.flattenDeep(timeline); // do not remove this!
+
+  // INITIALISE EXP ----------------------------------------------------------------------------------------------------
+  jsPsych.init({
+    timeline: timeline,
+    preload_images: preloadimages,
+    max_load_time: 500*1000,
+    exclusions: {
+      min_width: 1100,
+      min_height: 600,
+      max_width: 1600,
+      max_height: 900,
+    },
+    on_finish: function(data) { 
+      $("#jspsych-content").html("<img src='https://i.gifer.com/4V0b.gif'>");
+
+      /* Initialize Firebase */
+      var config = {
+        apiKey: "AIzaSyBwDr8n-RNCbBOk1lKIxw7AFgslXGcnQzM",
+        databaseURL: "https://postdocgent.firebaseio.com/"
+      };
+
+      firebase.initializeApp(config);
+      var database = firebase.database();
+      id = jsPsych.randomization.randomID(15); // short ID
+
+      /* jsPsych: add data to every trial */
+      jsPsych.data.addProperties({
+        prolificID: prolificID,
+        id: id,
+        //traitsOrder: traitsOrder,
+        totalTime: jsPsych.totalTime()
+      });
+
+      var subdata = data.filter({trial_type: 'survey-likert'}).csv();
+    //   jsPsych.data.displayData();
+
+      /* Send data to Firebase and redirect to Qualtrics */
+      database.ref("haloeffect_PersonalitySelf/" + id + "/").update({subdata}).then(function() { 
+        console.log("data sent!");
+        $("#jspsych-content").html(debrief);
+        //window.location = qlink; // redirect to qualtrics
+      });
+    }
+  });
+</script>
+
+</html>
